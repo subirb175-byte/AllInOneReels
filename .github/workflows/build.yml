@@ -249,11 +249,14 @@ jobs:
 
                   fabDownload.setOnClickListener {
                       activeWebView.evaluateJavascript("(function() { return window.location.href; })();") { rawUrl ->
-                          val currentUrl = rawUrl?.replace("\"", "") ?: ""
-                          if (currentUrl.startsWith("http")) {
+                          var currentUrl = rawUrl?.replace("\"", "") ?: ""
+                          if (currentUrl.contains("login") || currentUrl.isEmpty()) {
+                              currentUrl = activeWebView.url ?: ""
+                          }
+                          if (currentUrl.startsWith("http") && !currentUrl.contains("login")) {
                               showQualitySelectorDialog(currentUrl)
                           } else {
-                              Toast.makeText(this, "ভিডিও লিংক পাওয়া যায়নি!", Toast.LENGTH_SHORT).show()
+                              Toast.makeText(this, "দয়া করে ভিডিও পেজে থাকুন অথবা রিফ্রেশ করুন!", Toast.LENGTH_SHORT).show()
                           }
                       }
                   }
