@@ -19,14 +19,13 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      - name: Generate Project Files with Icon
+      - name: Generate Project Files
         run: |
           rm -rf app build.gradle settings.gradle gradle.properties
-          mkdir -p app/src/main/res/drawable
+          mkdir -p app/src/main/res/mipmap-xxhdpi
           mkdir -p app/src/main/res/layout
           mkdir -p app/src/main/java/com/example/allinonerells
 
-          # একটি সিম্পল লোগো জেনারেট করা যাতে রিসোর্স এরর না আসে
           cat << 'EOF' > app/src/main/res/drawable/ic_launcher_foreground.xml
           <vector xmlns:android="http://schemas.android.com/apk/res/android"
               android:width="108dp"
@@ -333,6 +332,8 @@ jobs:
                           request.addOption("-f", formatOption)
                           request.addOption("--no-check-certificate")
                           request.addOption("--geo-bypass")
+                          request.addOption("--ignore-config")
+                          request.addOption("--no-warnings")
 
                           YoutubeDL.getInstance().execute(request) { progress, etaInSeconds, line ->
                               runOnUiThread {
