@@ -19,11 +19,6 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v3
-        with:
-          gradle-version: '8.7'
-
       - name: Create Project Files
         run: |
           rm -rf app build.gradle settings.gradle gradle.properties
@@ -286,10 +281,6 @@ jobs:
                   activeButton.setTextColor(Color.parseColor(activeColor))
               }
 
-              private fun downloadReelDirectly(videoUrl:UrlString = videoUrl) {
-                  // Handled via inner executor
-              }
-
               private fun downloadReelDirectly(videoUrl: String) {
                   if (!isEngineReady) {
                       Toast.makeText(this, "ডাউনলোডার ইঞ্জিন প্রস্তুত হচ্ছে, ৫ সেকেন্ড পর আবার চেষ্টা করুন...", Toast.LENGTH_SHORT).show()
@@ -327,24 +318,17 @@ jobs:
           }
           EOF
 
-                  - name: Build with Gradle
-        uses: gradle/actions/setup-gradle@v3
-        with:
-          arguments: :app:assembleDebug
+      - name: Download Gradle Binary Manually
+        run: |
+          wget https://services.gradle.org/distributions/gradle-8.7-bin.zip
+          unzip -q gradle-8.7-bin.zip
+          sudo ln -s $(pwd)/gradle-8.7/bin/gradle /usr/local/bin/gradle
+
+      - name: Build APK with Gradle
+        run: gradle :app:assembleDebug
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
           name: All-In-One-Reels-APK
           path: app/build/outputs/apk/debug/app-debug.apk
-      - name: Build with Gradle
-        uses: gradle/actions/setup-gradle@v3
-        with:
-          arguments: :app:assembleDebug
-
-      - name: Upload APK Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: All-In-One-Reels-APK
-          path: app/build/outputs/apk/debug/app-debug.apk
-          
