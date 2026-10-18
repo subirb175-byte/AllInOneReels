@@ -19,12 +19,25 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      - name: Generate Project Files
+      - name: Generate Project Files with Icon
         run: |
           rm -rf app build.gradle settings.gradle gradle.properties
-          mkdir -p app/src/main/res/mipmap-xxhdpi
+          mkdir -p app/src/main/res/drawable
           mkdir -p app/src/main/res/layout
           mkdir -p app/src/main/java/com/example/allinonerells
+
+          # একটি সিম্পল লোগো জেনারেট করা যাতে রিসোর্স এরর না আসে
+          cat << 'EOF' > app/src/main/res/drawable/ic_launcher_foreground.xml
+          <vector xmlns:android="http://schemas.android.com/apk/res/android"
+              android:width="108dp"
+              android:height="108dp"
+              android:viewportWidth="108"
+              android:viewportHeight="108">
+            <path
+                android:fillColor="#E91E63"
+                android:pathData="M24,24h60v60h-60z"/>
+          </vector>
+          EOF
 
           cat << 'EOF' > settings.gradle
           pluginManagement {
@@ -103,8 +116,8 @@ jobs:
               <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="29" />
               <application
                   android:allowBackup="true"
-                  android:icon="@mipmap/ic_launcher"
-                  android:roundIcon="@mipmap/ic_launcher"
+                  android:icon="@drawable/ic_launcher_foreground"
+                  android:roundIcon="@drawable/ic_launcher_foreground"
                   android:label="All-in-One Download"
                   android:extractNativeLibs="true"
                   android:hardwareAccelerated="true"
