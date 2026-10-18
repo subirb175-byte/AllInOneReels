@@ -22,7 +22,7 @@ jobs:
       - name: Generate Project Files
         run: |
           rm -rf app build.gradle settings.gradle gradle.properties
-          mkdir -p app/src/main/res/mipmap-xxhdpi
+          mkdir -p app/src/main/res/drawable
           mkdir -p app/src/main/res/layout
           mkdir -p app/src/main/java/com/example/allinonerells
 
