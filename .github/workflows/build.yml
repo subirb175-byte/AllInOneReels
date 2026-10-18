@@ -26,6 +26,139 @@ jobs:
         with:
           gradle-version: '8.7'
 
+      - name: Generate Project Files
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf app build.gradle settings.gradle gradle.properties
+          cat << 'PROJECT_EOF' > settings.gradle
+          pluginManagement {
+              repositories { google(); mavenCentral(); gradlePluginPortal() }
+          }
+          dependencyResolutionManagement {
+              repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+              repositories { google(); mavenCentral() }
+          }
+          rootProject.name = "AllInOneReels"
+          include ':app'
+          PROJECT_EOF
+          cat << 'PROJECT_EOF' > build.gradle
+          plugins {
+              id 'com.android.application' version '8.3.2' apply false
+              id 'org.jetbrains.kotlin.android' version '1.9.22' apply false
+          }
+          PROJECT_EOF
+          cat << 'PROJECT_EOF' > gradle.properties
+          org.gradle.jvmargs=-Xmx2048m -Dfile.encoding=UTF-8
+          android.useAndroidX=true
+          android.nonTransitiveRClass=true
+          PROJECT_EOF
+          mkdir -p app/src/main/res/drawable
+          mkdir -p app/src/main/res/layout
+          mkdir -p app/src/main/java/com/example/allinonerells
+          cat << 'PROJECT_EOF' > app/build.gradle
+          plugins {
+              id 'com.android.application'
+              id 'org.jetbrains.kotlin.android'
+          }
+          android {
+              namespace 'com.example.allinonerells'
+              compileSdk 34
+              defaultConfig {
+                  applicationId "com.example.allinonerells"
+                  minSdk 24
+                  targetSdk 34
+                  versionCode 2
+                  versionName "1.1"
+              }
+              compileOptions {
+                  sourceCompatibility JavaVersion.VERSION_17
+                  targetCompatibility JavaVersion.VERSION_17
+              }
+              kotlinOptions { jvmTarget = '17' }
+          }
+          dependencies {
+              implementation 'androidx.core:core-ktx:1.12.0'
+              implementation 'androidx.appcompat:appcompat:1.6.1'
+              implementation 'com.google.android.material:material:1.11.0'
+              implementation 'io.github.junkfood02.youtubedl-android:library:0.18.1'
+              implementation 'io.github.junkfood02.youtubedl-android:ffmpeg:0.18.1'
+          }
+          PROJECT_EOF
+          cat << 'PROJECT_EOF' > app/src/main/AndroidManifest.xml
+          <?xml version="1.0" encoding="utf-8"?>
+          <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+              <uses-permission android:name="android.permission.INTERNET" />
+              <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+              <application
+                  android:allowBackup="false"
+                  android:icon="@drawable/ic_launcher_foreground"
+                  android:label="All-in-One Download"
+                  android:extractNativeLibs="true"
+                  android:hardwareAccelerated="true"
+                  android:usesCleartextTraffic="false"
+                  android:supportsRtl="true"
+                  android:theme="@style/Theme.AppCompat.DayNight.NoActionBar">
+                  <activity android:name=".MainActivity"
+                      android:configChanges="orientation|screenSize|keyboardHidden"
+                      android:exported="true">
+                      <intent-filter>
+                          <action android:name="android.intent.action.MAIN" />
+                          <category android:name="android.intent.category.LAUNCHER" />
+                      </intent-filter>
+                  </activity>
+              </application>
+          </manifest>
+          PROJECT_EOF
+          cat << 'PROJECT_EOF' > app/src/main/res/drawable/ic_launcher_foreground.xml
+          <vector xmlns:android="http://schemas.android.com/apk/res/android"
+              android:width="108dp" android:height="108dp"
+              android:viewportWidth="108" android:viewportHeight="108">
+              <path android:fillColor="#E91E63" android:pathData="M24,24h60v60h-60z"/>
+          </vector>
+          PROJECT_EOF
+          cat << 'PROJECT_EOF' > app/src/main/res/layout/activity_main.xml
+          <?xml version="1.0" encoding="utf-8"?>
+          <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+              xmlns:app="http://schemas.android.com/apk/res-auto"
+              android:layout_width="match_parent" android:layout_height="match_parent"
+              android:background="#000000">
+              <FrameLayout android:layout_width="match_parent" android:layout_height="match_parent"
+                  android:layout_above="@+id/bottomNav">
+                  <WebView android:id="@+id/webYoutube" android:layout_width="match_parent" android:layout_height="match_parent" />
+              </FrameLayout>
+              <com.google.android.material.floatingactionbutton.FloatingActionButton
+                  android:id="@+id/fabDownload" android:layout_width="wrap_content" android:layout_height="wrap_content"
+                  android:layout_above="@id/bottomNav" android:layout_alignParentEnd="true"
+                  android:layout_marginEnd="20dp" android:layout_marginBottom="90dp"
+                  android:contentDescription="Download"
+                  android:src="@android:drawable/stat_sys_download"
+                  app:backgroundTint="#E91E63" app:tint="#FFFFFF" />
+              <LinearLayout android:id="@id/bottomNav" android:layout_width="match_parent"
+                  android:layout_height="56dp" android:layout_alignParentBottom="true"
+                  android:orientation="horizontal" android:background="#121212">
+                  <Button android:id="@+id/btnYoutube" android:layout_width="match_parent" android:layout_height="match_parent" android:text="YT Shorts" android:textAllCaps="false" android:textColor="#FF0000" />
+              </LinearLayout>
+          </RelativeLayout>
+          PROJECT_EOF
+          cat << 'PROJECT_EOF' > app/src/main/java/com/example/allinonerells/MainActivity.kt
+          package com.example.allinonerells
+
+          import android.os.Bundle
+          import android.webkit.WebView
+          import androidx.appcompat.app.AppCompatActivity
+
+          class MainActivity : AppCompatActivity() {
+              override fun onCreate(savedInstanceState: Bundle?) {
+                  super.onCreate(savedInstanceState)
+                  setContentView(R.layout.activity_main)
+                  val webView = findViewById<WebView>(R.id.webYoutube)
+                  webView.settings.javaScriptEnabled = true
+                  webView.loadUrl("https://m.youtube.com/shorts")
+              }
+          }
+          PROJECT_EOF
+
       - name: Build APK with Gradle
         run: gradle :app:assembleDebug
 
