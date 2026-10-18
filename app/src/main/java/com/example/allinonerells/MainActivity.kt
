@@ -1,0 +1,171 @@
+package com.example.allinonerells
+
+import android.annotation.SuppressLint
+import android.graphics.Color
+import android.media.MediaScannerConnection
+import android.os.Bundle
+import android.os.Environment
+import android.view.View
+import android.webkit.CookieManager
+import android.webkit.WebChromeClient
+import android.webkit.WebResourceRequest
+import android.webkit.WebView
+import android.webkit.WebViewClient
+import android.widget.Button
+import android.widget.Toast
+import androidx.appcompat.app.AppCompatActivity
+import com.google.android.material.floatingactionbutton.FloatingActionButton
+import com.yausername.ffmpeg.FFmpeg
+import com.yausername.youtubedl_android.YoutubeDL
+import com.yausername.youtubedl_android.YoutubeDLRequest
+import java.io.File
+import java.util.concurrent.Executors
+
+class MainActivity : AppCompatActivity() {
+
+    private lateinit var webYoutube: WebView
+    private lateinit var webFacebook: WebView
+    private lateinit var webInstagram: WebView
+    private lateinit var activeWebView: WebView
+
+    private lateinit var btnYoutube: Button
+    private lateinit var btnFacebook: Button
+    private lateinit var btnInstagram: Button
+    private lateinit var fabDownload: FloatingActionButton
+
+    private val executor = Executors.newSingleThreadExecutor()
+    private var isEngineReady = false
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContentView(R.layout.activity_main)
+
+        webYoutube = findViewById(R.id.webYoutube)
+        webFacebook = findViewById(R.id.webFacebook)
+        webInstagram = findViewById(R.id.webInstagram)
+
+        btnYoutube = findViewById(R.id.btnYoutube)
+        btnFacebook = findViewById(R.id.btnFacebook)
+        btnInstagram = findViewById(R.id.btnInstagram)
+        fabDownload = findViewById(R.id.fabDownload)
+
+        // ব্যাকগ্রাউন্ডে ডাউনলোডার ইঞ্জিন চালু করা
+        executor.execute {
+            try {
+                YoutubeDL.getInstance().init(applicationContext)
+                FFmpeg.getInstance().init(applicationContext)
+                isEngineReady = true
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+
+        setupWebView(webYoutube, "https://m.youtube.com/shorts")
+        setupWebView(webFacebook, "https://m.facebook.com/reel/")
+        setupWebView(webInstagram, "https://www.instagram.com/reels/")
+
+        activeWebView = webYoutube
+
+        btnYoutube.setOnClickListener { switchTab(webYoutube, btnYoutube, "#FF0000") }
+        btnFacebook.setOnClickListener { switchTab(webFacebook, btnFacebook, "#1877F2") }
+        btnInstagram.setOnClickListener { switchTab(webInstagram, btnInstagram, "#E1306C") }
+
+        fabDownload.setOnClickListener {
+            activeWebView.evaluateJavascript("(function() { return window.location.href; })();") { rawUrl ->
+                val currentUrl = rawUrl?.replace("\"", "") ?: ""
+                if (currentUrl.startsWith("http")) {
+                    downloadReelDirectly(currentUrl)
+                } else {
+                    Toast.makeText(this, "ভিডিও লিংক পাওয়া যায়নি!", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+    }
+
+    @SuppressLint("SetJavaScriptEnabled")
+    private fun setupWebView(webView: WebView, startUrl: String) {
+        val settings = webView.settings
+        settings.javaScriptEnabled = true
+        settings.domStorageEnabled = true
+        settings.mediaPlaybackRequiresUserGesture = false
+        settings.loadWithOverviewMode = true
+        settings.useWideViewPort = true
+        settings.userAgentString = "Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Mobile Safari/537.36"
+
+        val cookieManager = CookieManager.getInstance()
+        cookieManager.setAcceptCookie(true)
+        cookieManager.setAcceptThirdPartyCookies(webView, true)
+
+        webView.webChromeClient = WebChromeClient()
+        webView.webViewClient = object : WebViewClient() {
+            override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
+                val url = request?.url?.toString() ?: return false
+                return !(url.startsWith("http://") || url.startsWith("https://"))
+            }
+        }
+        webView.loadUrl(startUrl)
+    }
+
+    private fun switchTab(targetWebView: WebView, activeButton: Button, activeColor: String) {
+        if (activeWebView != targetWebView) {
+            activeWebView.evaluateJavascript("document.querySelectorAll('video').forEach(v => v.pause());", null)
+            activeWebView.visibility = View.GONE
+        }
+        targetWebView.visibility = View.VISIBLE
+        activeWebView = targetWebView
+
+        btnYoutube.setTextColor(Color.parseColor("#AAAAAA"))
+        btnFacebook.setTextColor(Color.parseColor("#AAAAAA"))
+        btnInstagram.setTextColor(Color.parseColor("#AAAAAA"))
+        activeButton.setTextColor(Color.parseColor(activeColor))
+    }
+
+    private fun downloadReelDirectly(videoUrl: String) {
+        if (!isEngineReady) {
+            Toast.makeText(this, "ডাউনলোডার রেডি হচ্ছে, ৫ সেকেন্ড পর আবার চেষ্টা করুন...", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        Toast.makeText(this, "ডাউনলোড শুরু হয়েছে...", Toast.LENGTH_SHORT).show()
+
+        executor.execute {
+            try {
+                val downloadDir = File(
+                    Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS),
+                    "ReelsHub"
+                )
+                if (!downloadDir.exists()) downloadDir.mkdirs()
+
+                val request = YoutubeDLRequest(videoUrl)
+                request.addOption("-o", downloadDir.absolutePath + "/Reel_%(id)s.%(ext)s")
+                request.addOption("-f", "best[ext=mp4]/best")
+
+                YoutubeDL.getInstance().execute(request)
+
+                MediaScannerConnection.scanFile(
+                    applicationContext,
+                    arrayOf(downloadDir.absolutePath),
+                    null,
+                    null
+                )
+
+                runOnUiThread {
+                    Toast.makeText(this, "ডাউনলোড সম্পন্ন! Downloads/ReelsHub ফোল্ডার দেখুন।", Toast.LENGTH_LONG).show()
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+                runOnUiThread {
+                    Toast.makeText(this, "ডাউনলোড ব্যর্থ: ভিডিওটি প্রাইভেট হতে পারে।", Toast.LENGTH_LONG).show()
+                }
+            }
+        }
+    }
+
+    override fun onBackPressed() {
+        if (activeWebView.canGoBack()) {
+            activeWebView.goBack()
+        } else {
+            super.onBackPressed()
+        }
+    }
+}
