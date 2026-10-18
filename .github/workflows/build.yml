@@ -19,7 +19,7 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      - name: Generate Complete Android Project
+      - name: Generate Project Files
         run: |
           rm -rf app build.gradle settings.gradle gradle.properties
           mkdir -p app/src/main/res/mipmap-xxhdpi
@@ -213,4 +213,157 @@ jobs:
                   webInstagram = findViewById(R.id.webInstagram)
                   btnYoutube = findViewById(R.id.btnYoutube)
                   btnFacebook = findViewById(R.id.btnFacebook)
-                  btnInstagram =
+                  btnInstagram = findViewById(R.id.btnInstagram)
+                  fabDownload = findViewById(R.id.fabDownload)
+
+                  executor.execute {
+                      try {
+                          YoutubeDL.getInstance().init(applicationContext)
+                          FFmpeg.getInstance().init(applicationContext)
+                          isEngineReady = true
+                      } catch (e: Exception) {
+                          e.printStackTrace()
+                      }
+                  }
+
+                  setupWebView(webYoutube, "https://m.youtube.com/shorts")
+                  setupWebView(webFacebook, "https://m.facebook.com/reel/")
+                  setupWebView(webInstagram, "https://www.instagram.com/reels/")
+                  activeWebView = webYoutube
+
+                  btnYoutube.setOnClickListener { switchTab(webYoutube, btnYoutube, "#FF0000") }
+                  btnFacebook.setOnClickListener { switchTab(webFacebook, btnFacebook, "#1877F2") }
+                  btnInstagram.setOnClickListener { switchTab(webInstagram, btnInstagram, "#E1306C") }
+
+                  fabDownload.setOnClickListener {
+                      activeWebView.evaluateJavascript("(function() { return window.location.href; })();") { rawUrl ->
+                          val currentUrl = rawUrl?.replace("\"", "") ?: ""
+                          if (currentUrl.startsWith("http")) {
+                              showQualitySelectorDialog(currentUrl)
+                          } else {
+                              Toast.makeText(this, "ভিডিও লিংক পাওয়া যায়নি!", Toast.LENGTH_SHORT).show()
+                          }
+                      }
+                  }
+              }
+
+              @SuppressLint("SetJavaScriptEnabled")
+              private fun setupWebView(webView: WebView, startUrl: String) {
+                  val settings = webView.settings
+                  settings.javaScriptEnabled = true
+                  settings.domStorageEnabled = true
+                  settings.mediaPlaybackRequiresUserGesture = false
+                  settings.loadWithOverviewMode = true
+                  settings.useWideViewPort = true
+                  settings.userAgentString = "Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Mobile Safari/537.36"
+
+                  val cookieManager = CookieManager.getInstance()
+                  cookieManager.setAcceptCookie(true)
+                  cookieManager.setAcceptThirdPartyCookies(webView, true)
+
+                  webView.webChromeClient = WebChromeClient()
+                  webView.webViewClient = object : WebViewClient() {
+                      override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
+                          val url = request?.url?.toString() ?: return false
+                          return !(url.startsWith("http://") || url.startsWith("https://"))
+                      }
+                  }
+                  webView.loadUrl(startUrl)
+              }
+
+              private fun switchTab(targetWebView: WebView, activeButton: Button, activeColor: String) {
+                  if (activeWebView != targetWebView) {
+                      activeWebView.evaluateJavascript("document.querySelectorAll('video').forEach(v => v.pause());", null)
+                      activeWebView.visibility = View.GONE
+                  }
+                  targetWebView.visibility = View.VISIBLE
+                  activeWebView = targetWebView
+
+                  btnYoutube.setTextColor(Color.parseColor("#AAAAAA"))
+                  btnFacebook.setTextColor(Color.parseColor("#AAAAAA"))
+                  btnInstagram.setTextColor(Color.parseColor("#AAAAAA"))
+                  activeButton.setTextColor(Color.parseColor(activeColor))
+              }
+
+              private fun showQualitySelectorDialog(videoUrl: String) {
+                  if (!isEngineReady) {
+                      Toast.makeText(this, "ডাউনলোডার ইঞ্জিন প্রস্তুত হচ্ছে, ৫ সেকেন্ড অপেক্ষা করুন...", Toast.LENGTH_SHORT).show()
+                      return
+                  }
+                  val qualities = arrayOf("সেরা কোয়ালিটি (HD)", "মাঝারি কোয়ালিটি (720p)", "কম সাইজ (480p / 360p)")
+                  val formatOptions = arrayOf("best[ext=mp4]/best", "best[height<=720][ext=mp4]/best", "best[height<=480][ext=mp4]/best")
+
+                  val builder = AlertDialog.Builder(this)
+                  builder.setTitle("ভিডিওর কোয়ালিটি সিলেক্ট করুন")
+                  builder.setItems(qualities) { _, which ->
+                      startDownloadWithProgress(videoUrl, formatOptions[which])
+                  }
+                  builder.show()
+              }
+
+              private fun startDownloadWithProgress(videoUrl: String, formatOption: String) {
+                  val progressDialog = AlertDialog.Builder(this)
+                      .setTitle("ডাউনলোড হচ্ছে...")
+                      .setMessage("দয়া করে অপেক্ষা করুন, ভিডিও গ্যালারিতে সেভ হচ্ছে...")
+                      .setCancelable(false)
+                      .create()
+
+                  progressDialog.show()
+
+                  executor.execute {
+                      try {
+                          val downloadDir = File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), "ReelsHub")
+                          if (!downloadDir.exists()) downloadDir.mkdirs()
+
+                          val request = YoutubeDLRequest(videoUrl)
+                          request.addOption("-o", downloadDir.absolutePath + "/Reel_%(id)s.%(ext)s")
+                          request.addOption("-f", formatOption)
+                          request.addOption("--no-check-certificate")
+                          request.addOption("--geo-bypass")
+
+                          YoutubeDL.getInstance().execute(request) { progress, etaInSeconds, line ->
+                              runOnUiThread {
+                                  progressDialog.setMessage("ডাউনলোড হচ্ছে: ${progress.toInt()}% \nবাকি সময়: ${etaInSeconds} সেকেন্ড")
+                              }
+                          }
+
+                          MediaScannerConnection.scanFile(applicationContext, arrayOf(downloadDir.absolutePath), null, null)
+
+                          runOnUiThread {
+                              progressDialog.dismiss()
+                              Toast.makeText(this, "ডাউনলোড সম্পন্ন! Downloads/ReelsHub ফোল্ডারে সেভ হয়েছে।", Toast.LENGTH_LONG).show()
+                          }
+                      } catch (e: Exception) {
+                          e.printStackTrace()
+                          runOnUiThread {
+                              progressDialog.dismiss()
+                              Toast.makeText(this, "ডাউনলোড ব্যর্থ: ${e.localizedMessage}", Toast.LENGTH_LONG).show()
+                          }
+                      }
+                  }
+              }
+
+              override fun onBackPressed() {
+                  if (activeWebView.canGoBack()) {
+                      activeWebView.goBack()
+                  } else {
+                      super.onBackPressed()
+                  }
+              }
+          }
+          EOF
+
+      - name: Download Gradle Binary Manually
+        run: |
+          wget https://services.gradle.org/distributions/gradle-8.7-bin.zip
+          unzip -q gradle-8.7-bin.zip
+          sudo ln -s $(pwd)/gradle-8.7/bin/gradle /usr/local/bin/gradle
+
+      - name: Build APK with Gradle
+        run: gradle :app:assembleDebug
+
+      - name: Upload APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: All-In-One-Reels-APK
+          path: app/build/outputs/apk/debug/app-debug.apk
