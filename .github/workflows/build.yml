@@ -22,12 +22,6 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
-
-      - name: Install Android SDK packages
-        run: sdkmanager "platforms;android-34" "build-tools;34.0.0"
-
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
@@ -363,7 +357,7 @@ jobs:
                       if (name.isBlank() || (name + value).any {
                           it == '\t' || it == '\n' || it == '\r'
                       }) return@mapNotNull null
-                      ".$domain\tTRUE\t/\tTRUE\t0\t$name\t$value"
+                      .$domain\tTRUE\t/\tTRUE\t0\t$name\t$value"
                   }
                   if (rows.isEmpty()) return null
                   return File.createTempFile("session_", ".txt", cacheDir).apply {
@@ -519,4 +513,3 @@ jobs:
           name: All-In-One-Reels-APK
           path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
-
