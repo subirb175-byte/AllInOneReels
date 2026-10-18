@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     timeout-minutes: 40
     steps:
       - name: Checkout Repository
@@ -370,7 +370,6 @@ jobs:
                       writeText("# Netscape HTTP Cookie File\n" + rows.joinToString("\n") + "\n")
                   }
               }
-
               private fun startDownload(url: String, format: String) {
                   if (downloading || !ready) return
                   val domain = cookieDomain(url)
